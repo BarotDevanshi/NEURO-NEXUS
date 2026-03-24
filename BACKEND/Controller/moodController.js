@@ -32,7 +32,14 @@ exports.getMoods = async (req, res) => {
 // ➤ Delete Mood
 exports.deleteMood = async (req, res) => {
     try {
-        await Mood.findByIdAndDelete(req.params.id);
+        const mood = await Mood.findOneAndDelete({
+            _id: req.params.id,
+            userId: req.user.id
+        });
+
+        if (!mood) {
+            return res.status(404).json({ error: "Mood not found or not owned by user" });
+        }
 
         res.json({ success: true, message: "Mood deleted" });
 

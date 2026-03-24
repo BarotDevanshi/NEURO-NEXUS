@@ -51,6 +51,16 @@ exports.updateProgress = async (userId) => {
     progress.pendingTasks = pending;
     progress.completionRate = completionRate;
 
+    // 🔥 Calculate dopamine level
+    let dopamineLevel = 50; // base level
+    dopamineLevel += (completionRate / 100) * 30; // completion rate (0-30)
+    const streakBonus = Math.min(progress.streak * 2, 20); // streak (0-20)
+    dopamineLevel += streakBonus;
+    const taskBonus = Math.min(total / 10, 10); // tasks (0-10)
+    dopamineLevel += taskBonus;
+    dopamineLevel += 10; // recent activity bonus
+    progress.dopamineLevel = Math.min(Math.round(dopamineLevel), 100);
+
     await progress.save();
 };
 
@@ -66,9 +76,43 @@ exports.getProgress = async (req, res) => {
         // agar nahi hai to create
         if (!progress) {
             progress = await Progress.create({
-                userId: req.user.id
+                userId: req.user.id,
+                dopamineLevel: 50 // default starting level
             });
         }
+
+        // 🔥 Calculate dopamine level based on activity
+        let dopamineLevel = 50; // base level
+
+        // Completion rate contribution (0-30 points)
+        dopamineLevel += (progress.completionRate / 100) * 30;
+
+        // Streak contribution (0-20 points)
+        const streakBonus = Math.min(progress.streak * 2, 20);
+        dopamineLevel += streakBonus;
+
+        // Total tasks contribution (0-10 points)
+        const taskBonus = Math.min(progress.totalTasks / 10, 10);
+        dopamineLevel += taskBonus;
+
+        // Recent activity bonus (0-10 points)
+        if (progress.lastCompletedDate) {
+            const daysSinceLastActivity = Math.floor(
+                (new Date() - new Date(progress.lastCompletedDate)) / (1000 * 60 * 60 * 24)
+            );
+            if (daysSinceLastActivity <= 1) {
+                dopamineLevel += 10;
+            } else if (daysSinceLastActivity <= 3) {
+                dopamineLevel += 5;
+            }
+        }
+
+        // Cap at 100
+        dopamineLevel = Math.min(Math.round(dopamineLevel), 100);
+
+        // Update the dopamine level in database
+        progress.dopamineLevel = dopamineLevel;
+        await progress.save();
 
         res.json({ success: true, data: progress });
 

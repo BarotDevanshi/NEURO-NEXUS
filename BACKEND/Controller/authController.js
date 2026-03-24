@@ -21,7 +21,21 @@ exports.register = async (req, res) => {
             password: hashedPassword
         });
 
-        res.json({ message: "User registered successfully" });
+        // 🔥 Generate token for auto-login after register
+        const token = jwt.sign(
+            { id: user._id },
+            "secret",
+            { expiresIn: "1d" }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        });
 
     } catch (err) {
         console.log(err);
@@ -47,9 +61,14 @@ exports.login = async (req, res) => {
             { expiresIn: "1d" }
         );
 
+        // 🔥 Return token AND user (without password)
         res.json({
-            message: "Login successful",
-            token
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
         });
 
     } catch (err) {

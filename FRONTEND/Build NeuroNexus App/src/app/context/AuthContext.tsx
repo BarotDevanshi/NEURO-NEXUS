@@ -178,13 +178,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log("LOGIN RESPONSE:", response.data);
 
-      // 🔥 IMPORTANT: adjust according to backend
-      const { token: newToken, user: userData } =
-        response.data.data || response.data;
+      // 🔥 IMPORTANT: handle multiple response formats
+      let payload = response.data;
+      if (response.data?.data) {
+        payload = response.data.data;
+      }
 
-      if (!userData || !newToken) {
-        console.error("Invalid API response:", response.data);
-        throw new Error("Invalid login response");
+      const newToken = payload?.token;
+      const userData = payload?.user;
+
+      if (!newToken || !userData) {
+        console.error("Invalid API response structure:", response.data);
+        throw new Error("Invalid login response - missing token or user");
       }
 
       setToken(newToken);
@@ -205,13 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log("REGISTER RESPONSE:", response.data);
 
-      // 🔥 IMPORTANT: adjust according to backend
-      const { token: newToken, user: userData } =
-        response.data.data || response.data;
+      // 🔥 IMPORTANT: handle multiple response formats
+      let payload = response.data;
+      if (response.data?.data) {
+        payload = response.data.data;
+      }
 
-      if (!userData || !newToken) {
-        console.error("Invalid API response:", response.data);
-        throw new Error("Invalid register response");
+      const newToken = payload?.token;
+      const userData = payload?.user;
+
+      if (!newToken || !userData) {
+        console.error("Invalid API response structure:", response.data);
+        throw new Error("Invalid register response - missing token or user");
       }
 
       setToken(newToken);

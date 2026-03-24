@@ -51,11 +51,15 @@ exports.updateSleep = async (req, res) => {
                 (1000 * 60 * 60);
         }
 
-        const updated = await Sleep.findByIdAndUpdate(
-            req.params.id,
+        const updated = await Sleep.findOneAndUpdate(
+            { _id: req.params.id, userId: req.user.id },
             { ...req.body, duration },
             { new: true }
         );
+
+        if (!updated) {
+            return res.status(404).json({ error: "Sleep record not found or not owned by user" });
+        }
 
         res.json({ success: true, data: updated });
 
@@ -68,7 +72,14 @@ exports.updateSleep = async (req, res) => {
 // ➤ Delete Sleep Entry
 exports.deleteSleep = async (req, res) => {
     try {
-        await Sleep.findByIdAndDelete(req.params.id);
+        const sleep = await Sleep.findOneAndDelete({
+            _id: req.params.id,
+            userId: req.user.id
+        });
+
+        if (!sleep) {
+            return res.status(404).json({ error: "Sleep record not found or not owned by user" });
+        }
 
         res.json({ success: true, message: "Sleep record deleted" });
 

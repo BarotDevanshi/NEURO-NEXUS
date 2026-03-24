@@ -9,7 +9,7 @@ const activitySchema = new mongoose.Schema({
 
     type: {
         type: String,
-        enum: ["chat", "recommendation", "log"],
+        enum: ["chat", "recommendation", "log", "chat_context"],
         required: true
     },
 

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Gamepad2, Circle, Square, Triangle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Gamepad2, Circle, Square, Triangle, RefreshCw, Trophy, Target, Award } from 'lucide-react';
+import { gameService } from '../services/api';
+import { toast } from 'sonner';
 
 export const GamesScreen: React.FC = () => {
   const [breathCount, setBreathCount] = useState(0);
@@ -9,21 +11,62 @@ export const GamesScreen: React.FC = () => {
   const [matchedCards, setMatchedCards] = useState<number[]>([]);
   const [clickCount, setClickCount] = useState(0);
   const [focusScore, setFocusScore] = useState(0);
+  const [gameStats, setGameStats] = useState<any>(null);
+  const [achievements, setAchievements] = useState<string[]>([]);
+  const [breathStartTime, setBreathStartTime] = useState<number>(0);
+  const [focusStartTime, setFocusStartTime] = useState<number>(0);
+
+  useEffect(() => {
+    loadGameStats();
+    loadAchievements();
+  }, []);
+
+  const loadGameStats = async () => {
+    const stats = await gameService.getGameStats();
+    setGameStats(stats);
+  };
+
+  const loadAchievements = async () => {
+    const userAchievements = await gameService.getAchievements();
+    setAchievements(userAchievements);
+  };
+
+  const saveGameSession = async (gameType: string, score: number, duration: number, completed: boolean, metadata?: any) => {
+    const result = await gameService.saveGameSession({
+      gameType,
+      score,
+      duration,
+      completed,
+      metadata
+    });
+
+    if (result) {
+      toast.success(`Game saved! +${result.dopamineBoost} dopamine points! 🎉`);
+      loadGameStats(); // Refresh stats
+      loadAchievements(); // Check for new achievements
+    }
+  };
 
   // Breathing Exercise
   const startBreathing = () => {
     setIsBreathing(true);
+    setBreathStartTime(Date.now());
     const interval = setInterval(() => {
       setBreathCount(prev => {
         if (prev >= 5) {
           clearInterval(interval);
           setIsBreathing(false);
+          // Save breathing session
+          const duration = Math.floor((Date.now() - breathStartTime) / 1000);
+          saveGameSession('breathing', 5, duration, true);
           return 0;
         }
         return prev + 1;
       });
     }, 4000);
   };
+
+  const [memoryStartTime, setMemoryStartTime] = useState<number>(0);
 
   // Memory Match Game
   const initMemoryGame = () => {
@@ -32,6 +75,7 @@ export const GamesScreen: React.FC = () => {
     setMemoryCards(shuffled);
     setFlippedCards([]);
     setMatchedCards([]);
+    setMemoryStartTime(Date.now());
   };
 
   const flipCard = (index: number) => {
@@ -43,7 +87,15 @@ export const GamesScreen: React.FC = () => {
     if (newFlipped.length === 2) {
       const [first, second] = newFlipped;
       if (memoryCards[first] === memoryCards[second]) {
-        setMatchedCards([...matchedCards, first, second]);
+        const newMatched = [...matchedCards, first, second];
+        setMatchedCards(newMatched);
+
+        // Check if game is complete
+        if (newMatched.length === memoryCards.length) {
+          const duration = Math.floor((Date.now() - memoryStartTime) / 1000);
+          const score = Math.max(100 - (duration / 2), 10); // Score based on time
+          saveGameSession('memory', Math.round(score), duration, true);
+        }
       }
       setTimeout(() => setFlippedCards([]), 1000);
     }
@@ -51,11 +103,18 @@ export const GamesScreen: React.FC = () => {
 
   // Focus Clicker
   const handleFocusClick = () => {
+    if (clickCount === 0) {
+      setFocusStartTime(Date.now());
+    }
     setClickCount(prev => prev + 1);
     setFocusScore(prev => prev + Math.floor(Math.random() * 10 + 1));
   };
 
   const resetFocusGame = () => {
+    if (clickCount > 0) {
+      const duration = Math.floor((Date.now() - focusStartTime) / 1000);
+      saveGameSession('focus', focusScore, duration, true, { clicks: clickCount });
+    }
     setClickCount(0);
     setFocusScore(0);
   };
@@ -179,6 +238,46 @@ export const GamesScreen: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Game Stats & Achievements */}
+      {gameStats && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            <h3 className="text-lg">Your Progress</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">Games Played</div>
+              <div className="text-2xl text-blue-600 dark:text-blue-400">{gameStats.totalGames}</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">Completion Rate</div>
+              <div className="text-2xl text-green-600 dark:text-green-400">{Math.round(gameStats.completionRate)}%</div>
+            </div>
+          </div>
+
+          {achievements.length > 0 && (
+            <div>
+              <h4 className="text-md mb-2 flex items-center gap-2">
+                <Award className="w-4 h-4 text-yellow-500" />
+                Achievements
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {achievements.map((achievement, index) => (
+                  <span
+                    key={index}
+                    className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-sm"
+                  >
+                    🏆 {achievement}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Calm Color Patterns */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm">

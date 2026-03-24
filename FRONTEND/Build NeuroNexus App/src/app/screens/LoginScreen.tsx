@@ -25,7 +25,8 @@ export const LoginScreen: React.FC = () => {
       toast.success('Welcome back! 💙');
       navigate('/');
     } catch (error) {
-      toast.error('Invalid credentials. Try demo@neuronexus.app / demo123');
+      console.error('Login failed:', error);
+      toast.error(`Login failed: ${error.message || 'Please try again'}`);
     } finally {
       setIsLoading(false);
     }

@@ -37,22 +37,25 @@ export const AIChatScreen: React.FC = () => {
   const handleSend = async () => {
     if (!newMessage.trim()) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: newMessage,
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages([...messages, userMsg]);
+    const messageToSend = newMessage;
     setNewMessage('');
     setIsTyping(true);
 
     try {
-      const aiResponse = await aiService.sendMessage(newMessage);
-      setMessages(prev => [...prev, aiResponse]);
+      const aiResponse = await aiService.sendMessage(messageToSend);
+
+      // Reload chat history to get the complete conversation including the new messages
+      await loadChatHistory();
     } catch (error) {
       console.error('Failed to send message');
+      // On error, add the user message back to state so they can retry
+      const userMsg: Message = {
+        id: Date.now().toString(),
+        text: messageToSend,
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, userMsg]);
     } finally {
       setIsTyping(false);
     }
@@ -71,8 +74,8 @@ export const AIChatScreen: React.FC = () => {
             <Bot className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl">AI Assistant</h1>
-            <p className="text-purple-100 text-sm">Always here to help 💬</p>
+            <h1 className="text-2xl">Your Friend & Assistant</h1>
+            <p className="text-purple-100 text-sm">Here to chat, support, and help you thrive 💙</p>
           </div>
         </div>
       </div>

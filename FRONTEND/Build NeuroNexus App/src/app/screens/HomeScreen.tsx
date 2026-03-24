@@ -24,10 +24,10 @@ export const HomeScreen: React.FC = () => {
       </div>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
-        <AIRecommendation />
         <MoodTracker />
         <TaskDumpyard />
         <SleepTracker />
+        <AIRecommendation />
       </div>
     </div>
   );

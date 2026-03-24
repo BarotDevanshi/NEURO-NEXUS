@@ -7,7 +7,7 @@ interface Task {
   id: string;
   title: string;
   priority: 'high' | 'medium' | 'low';
-  completed: boolean;
+  status: 'pending' | 'completed';
   subtasks?: Task[];
 }
 
@@ -23,7 +23,12 @@ export const TaskDumpyard: React.FC = () => {
 
   const loadTasks = async () => {
     const data = await taskService.getTasks();
-    setTasks(data);
+    // Handle MongoDB _id to id conversion
+    const formattedTasks = data.map((task: any) => ({
+      ...task,
+      id: task._id || task.id
+    }));
+    setTasks(formattedTasks);
   };
 
   const addTask = async () => {
@@ -32,12 +37,16 @@ export const TaskDumpyard: React.FC = () => {
     const task = {
       title: newTask,
       priority,
-      completed: false,
+      status: 'pending',
       subtasks: [],
     };
 
     const savedTask = await taskService.createTask(task);
-    setTasks([...tasks, savedTask]);
+    const formattedTask = {
+      ...savedTask,
+      id: savedTask._id || savedTask.id
+    };
+    setTasks([...tasks, formattedTask]);
     setNewTask('');
     toast.success('Task added! 📝');
   };
@@ -46,8 +55,9 @@ export const TaskDumpyard: React.FC = () => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const updated = await taskService.updateTask(taskId, { completed: !task.completed });
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    const updated = await taskService.updateTask(taskId, { status: newStatus });
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
   };
 
   const deleteTask = async (taskId: string) => {
@@ -116,13 +126,13 @@ export const TaskDumpyard: React.FC = () => {
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
-                checked={task.completed}
+                checked={task.status === 'completed'}
                 onChange={() => toggleTask(task.id)}
                 className="mt-1 w-5 h-5 rounded cursor-pointer"
               />
               
               <div className="flex-1">
-                <p className={`${task.completed ? 'line-through opacity-60' : ''}`}>
+                <p className={`${task.status === 'completed' ? 'line-through opacity-60' : ''}`}>
                   {task.title}
                 </p>
               </div>

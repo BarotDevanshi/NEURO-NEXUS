@@ -54,6 +54,10 @@ app.use("/api/activity", activityRoutes);
 const progressRoutes = require("./Routes/progressRoutes");
 app.use("/api/progress", progressRoutes);
 
+//game api
+const gameRoutes = require("./Routes/gameRoutes");
+app.use("/api/games", gameRoutes);
+
 
 // Port setup
 const PORT = process.env.PORT || 5000;

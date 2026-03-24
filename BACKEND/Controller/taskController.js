@@ -36,6 +36,12 @@ exports.getTasks = async (req, res) => {
 // ➤ Update Task (status / title / priority)
 exports.updateTask = async (req, res) => {
     try {
+        // 🔥 SECURITY: Only update tasks owned by current user
+        const task = await Task.findOne({ _id: req.params.id, userId: req.user.id });
+        if (!task) {
+            return res.status(404).json({ message: "Task not found or access denied" });
+        }
+
         const updated = await Task.findByIdAndUpdate(
             req.params.id,
             req.body,
@@ -60,11 +66,17 @@ exports.deleteTask = async (req, res) => {
     try {
         const taskId = req.params.id;
 
+        // 🔥 SECURITY: Check if task belongs to current user
+        const task = await Task.findOne({ _id: taskId, userId: req.user.id });
+        if (!task) {
+            return res.status(404).json({ message: "Task not found or access denied" });
+        }
+
         // delete main task
         await Task.findByIdAndDelete(taskId);
 
-        // delete subtasks
-        await Task.deleteMany({ parentTask: taskId });
+        // delete subtasks (also check user ownership)
+        await Task.deleteMany({ parentTask: taskId, userId: req.user.id });
 
         res.json({ success: true, message: "Task deleted" });
 

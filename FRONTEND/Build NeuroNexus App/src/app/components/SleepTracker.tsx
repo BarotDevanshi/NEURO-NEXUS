@@ -4,16 +4,48 @@ import { sleepService } from '../services/api';
 import { toast } from 'sonner';
 
 export const SleepTracker: React.FC = () => {
-  const [sleepTime, setSleepTime] = useState('22:00');
+  const [sleepTime, setSleepTime] = useState('10:00');
+  const [sleepPeriod, setSleepPeriod] = useState<'AM' | 'PM'>('PM');
   const [wakeTime, setWakeTime] = useState('07:00');
+  const [wakePeriod, setWakePeriod] = useState<'AM' | 'PM'>('AM');
   const [quality, setQuality] = useState<'good' | 'average' | 'poor'>('good');
 
+  // Convert 12-hour time to 24-hour format
+  const convertTo24Hour = (time12: string, period: 'AM' | 'PM'): string => {
+    const [hours, minutes] = time12.split(':').map(Number);
+    let hours24 = hours;
+    
+    if (period === 'PM' && hours !== 12) {
+      hours24 = hours + 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours24 = 0;
+    }
+    
+    return `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  // Convert 24-hour time to 12-hour format
+  const convertTo12Hour = (time24: string): { time: string; period: 'AM' | 'PM' } => {
+    const [hours, minutes] = time24.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    let hours12 = hours % 12;
+    hours12 = hours12 === 0 ? 12 : hours12;
+    
+    return {
+      time: `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`,
+      period
+    };
+  };
+
   const calculateDuration = () => {
-    const sleep = new Date(`2000-01-01T${sleepTime}`);
-    let wake = new Date(`2000-01-01T${wakeTime}`);
+    const sleep24 = convertTo24Hour(sleepTime, sleepPeriod);
+    const wake24 = convertTo24Hour(wakeTime, wakePeriod);
+    
+    const sleep = new Date(`2000-01-01T${sleep24}`);
+    let wake = new Date(`2000-01-01T${wake24}`);
     
     if (wake < sleep) {
-      wake = new Date(`2000-01-02T${wakeTime}`);
+      wake = new Date(`2000-01-02T${wake24}`);
     }
     
     const diff = wake.getTime() - sleep.getTime();
@@ -24,12 +56,27 @@ export const SleepTracker: React.FC = () => {
   };
 
   const handleSave = async () => {
+    // Convert 12-hour times to 24-hour format for backend
+    const sleepTime24 = convertTo24Hour(sleepTime, sleepPeriod);
+    const wakeTime24 = convertTo24Hour(wakeTime, wakePeriod);
+    
+    // Create full date-time strings for backend
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    let sleepDateTime = `${today}T${sleepTime24}:00`;
+    let wakeDateTime = `${today}T${wakeTime24}:00`;
+    
+    // If wake time is before sleep time, it means next day
+    if (wakeTime24 < sleepTime24) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      wakeDateTime = `${tomorrowStr}T${wakeTime24}:00`;
+    }
+
     const data = {
-      sleepTime,
-      wakeTime,
-      duration: calculateDuration(),
+      sleepTime: sleepDateTime,
+      wakeTime: wakeDateTime,
       quality,
-      date: new Date().toISOString(),
     };
 
     await sleepService.saveSleep(data);
@@ -55,24 +102,44 @@ export const SleepTracker: React.FC = () => {
             <label className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">
               Bedtime 🌙
             </label>
-            <input
-              type="time"
-              value={sleepTime}
-              onChange={(e) => setSleepTime(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0"
-            />
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={sleepTime}
+                onChange={(e) => setSleepTime(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0"
+              />
+              <select
+                value={sleepPeriod}
+                onChange={(e) => setSleepPeriod(e.target.value as 'AM' | 'PM')}
+                className="px-3 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0 min-w-[70px]"
+              >
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
           </div>
           
           <div>
             <label className="text-sm text-gray-600 dark:text-gray-400 mb-2 block">
               Wake Time ☀️
             </label>
-            <input
-              type="time"
-              value={wakeTime}
-              onChange={(e) => setWakeTime(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0"
-            />
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={wakeTime}
+                onChange={(e) => setWakeTime(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0"
+              />
+              <select
+                value={wakePeriod}
+                onChange={(e) => setWakePeriod(e.target.value as 'AM' | 'PM')}
+                className="px-3 py-3 rounded-2xl bg-gray-50 dark:bg-gray-700 border-0 min-w-[70px]"
+              >
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
           </div>
         </div>
 

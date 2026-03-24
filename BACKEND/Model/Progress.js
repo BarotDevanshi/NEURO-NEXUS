@@ -2,8 +2,7 @@ const mongoose = require("mongoose");
 
 const progressSchema = new mongoose.Schema({
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: mongoose.Schema.Types.Mixed, // Allow both ObjectId and String
         required: true,
         unique: true
     },
@@ -35,6 +34,13 @@ const progressSchema = new mongoose.Schema({
 
     lastCompletedDate: {
         type: Date
+    },
+
+    dopamineLevel: {
+        type: Number,
+        default: 50,
+        min: 0,
+        max: 100
     }
 
 }, { timestamps: true });

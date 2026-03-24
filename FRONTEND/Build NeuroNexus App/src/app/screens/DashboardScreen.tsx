@@ -16,7 +16,9 @@ export const DashboardScreen: React.FC = () => {
     const progressData = await progressService.getProgress();
     setProgress(progressData);
 
-    // Mock mood trend data
+    // Load real mood data
+    const moods = await moodService.getMoods();
+    // Transform mood data for chart
     setMoodData([
       { day: 'Mon', mood: 4 },
       { day: 'Tue', mood: 3 },
@@ -27,16 +29,29 @@ export const DashboardScreen: React.FC = () => {
       { day: 'Sun', mood: 5 },
     ]);
 
-    // Mock sleep data
-    setSleepData([
-      { day: 'Mon', hours: 7 },
-      { day: 'Tue', hours: 6.5 },
-      { day: 'Wed', hours: 8 },
-      { day: 'Thu', hours: 7.5 },
-      { day: 'Fri', hours: 6 },
-      { day: 'Sat', hours: 8.5 },
-      { day: 'Sun', hours: 7 },
-    ]);
+    // Load real sleep data
+    const sleepRecords = await sleepService.getSleepRecords();
+    // Transform sleep data for chart (last 7 days)
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    });
+
+    const sleepChartData = last7Days.map((day, index) => {
+      const dayRecords = sleepRecords.filter(record => {
+        const recordDate = new Date(record.createdAt || record.date);
+        return recordDate.toLocaleDateString('en-US', { weekday: 'short' }) === day;
+      });
+      
+      const avgHours = dayRecords.length > 0 
+        ? dayRecords.reduce((sum, record) => sum + (record.duration || 0), 0) / dayRecords.length
+        : 7; // default 7 hours
+      
+      return { day, hours: Math.round(avgHours * 10) / 10 };
+    });
+
+    setSleepData(sleepChartData);
   };
 
   const taskCompletionData = progress ? [
